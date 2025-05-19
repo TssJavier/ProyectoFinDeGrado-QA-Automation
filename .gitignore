@@ -1,0 +1,10 @@
+
+# Playwright
+node_modules/
+/blob-report/
+/playwright/.cache/
+echo "node_modules/
+/test-results/
+/playwright-report/
+/playwright/.cache/
+.env" > .gitignore
