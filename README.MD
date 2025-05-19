@@ -16,8 +16,6 @@ Este proyecto contiene pruebas automatizadas para la web de CogniFit (www.cognif
 - npm o yarn
 
 ## Instalación
-
-\`\`\`bash
 # Clonar el repositorio
 git clone https://github.com/tu-usuario/cognifit-qa-automation.git
 cd cognifit-qa-automation
@@ -27,11 +25,9 @@ npm install
 
 # Instalar navegadores de Playwright
 npx playwright install
-\`\`\`
 
 ## Ejecución de Pruebas
 
-\`\`\`bash
 # Ejecutar todas las pruebas
 npm test
 
@@ -52,7 +48,6 @@ npm run report
 
 # Ejecutar en modo debug
 npm run debug
-\`\`\`
 
 ## Integración Continua
 

@@ -10,17 +10,16 @@ test.describe("Pruebas básicas de accesibilidad", () => {
 
     console.log("Problemas de accesibilidad encontrados:", issues)
 
-    // Idealmente no debería haber problemas, pero podemos ser flexibles
-    // dependiendo del estado actual del sitio
+    // No debería haber problemas graves, pero puede haber advertencias
     expect(issues.length).toBeLessThanOrEqual(3)
   })
 
   test("Los formularios deben tener etiquetas y ser accesibles", async ({ page }) => {
-    // Probar en página de login o contacto donde haya formularios
+    // Login en el site
     await page.goto("/login")
     await waitForPageLoad(page)
 
-    // Verificar que los inputs tienen labels asociados
+    // Verificar que los inputs tienen labels y siguen funcionando correctamente
     const inputs = page.locator("input[id]")
     const count = await inputs.count()
 
