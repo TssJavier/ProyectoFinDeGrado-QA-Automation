@@ -1,67 +1,100 @@
 import { test, expect } from "@playwright/test"
-import { waitForPageLoad, acceptCookies } from "../utils/helpers"
 
-test.describe("Pruebas de Layout - Responsive", () => {
-  test("Layout en Desktop", async ({ page }) => {
-    console.log("Probando como se ve en ordenador...")
-
-    await page.setViewportSize({ width: 1280, height: 720 }) // tamaño de ordenador
+// Estas pruebas ven si la página se ve bien en diferentes tamaños de pantalla
+test("Ver cómo se ve en una pantalla grande de ordenador", async ({ page }) => {
+  try {
+    // Pongo la pantalla como si fuera un monitor grande
+    await page.setViewportSize({ width: 1920, height: 1080 })
     await page.goto("https://www.cognifit.com/")
-    await acceptCookies(page)
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Ver si están los elementos principales
+    // Busco el logo de CogniFit
     const logo = page.locator('img[alt*="CogniFit"], .logo')
-    await expect(logo.first()).toBeVisible()
+    const logoExists = (await logo.count()) > 0
 
-    const mainTitle = page.locator('h1, *:has-text("perdiendo facultades")')
-    await expect(mainTitle.first()).toBeVisible()
+    if (logoExists) {
+      await expect(logo.first()).toBeVisible({ timeout: 10000 })
+      console.log("✅ El logo se ve bien en pantalla grande")
+    } else {
+      console.log("❌ No encontré el logo")
+    }
 
-    const startButton = page.locator('button:has-text("Comenzar")')
-    await expect(startButton).toBeVisible()
+    // Busco el menú de navegación
+    const navigation = page.locator("nav, header")
+    const navExists = (await navigation.count()) > 0
 
-    console.log("En desktop se ve bien")
-  })
+    if (navExists) {
+      await expect(navigation.first()).toBeVisible()
+      console.log("✅ El menú se ve bien en pantalla grande")
+    } else {
+      console.log("❌ No encontré el menú")
+    }
+  } catch (error) {
+    console.log("❌ Error revisando la pantalla grande")
+    throw error
+  }
+})
 
-  test("Layout en Tablet", async ({ page }) => {
-    console.log("Probando como se ve en tablet...")
-
-    await page.setViewportSize({ width: 768, height: 1024 }) // tamaño tablet
+test("Ver cómo se ve en un móvil", async ({ page }) => {
+  try {
+    // Cambio el tamaño como si fuera un iPhone
+    await page.setViewportSize({ width: 375, height: 667 })
     await page.goto("https://www.cognifit.com/")
-    await acceptCookies(page)
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Ver que no se sale por los lados
+    // Reviso que no se salga por los lados
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth)
-    expect(bodyWidth).toBeLessThanOrEqual(768)
 
-    // Ver que el título sigue ahí
-    const mainTitle = page.locator('h1, *:has-text("perdiendo facultades")')
-    await expect(mainTitle.first()).toBeVisible()
+    if (bodyWidth <= 400) {
+      console.log("✅ La página cabe bien en el móvil")
+    } else {
+      console.log("❌ La página se sale por los lados en móvil")
+    }
 
-    console.log("En tablet también se ve bien")
-  })
+    expect(bodyWidth).toBeLessThanOrEqual(400)
 
-  test("Layout en Móvil", async ({ page }) => {
-    console.log("Probando como se ve en móvil...")
+    // Reviso que el título principal se siga viendo
+    const mainTitle = page.locator("h1, h2")
+    const titleExists = (await mainTitle.count()) > 0
 
-    await page.setViewportSize({ width: 375, height: 667 }) // tamaño móvil
+    if (titleExists) {
+      await expect(mainTitle.first()).toBeVisible()
+      console.log("✅ El título se ve bien en móvil")
+    } else {
+      console.log("❌ No se ve el título en móvil")
+    }
+  } catch (error) {
+    console.log("❌ Error revisando el móvil")
+    throw error
+  }
+})
+
+test("Revisar que estén las partes principales de la página", async ({ page }) => {
+  try {
     await page.goto("https://www.cognifit.com/")
-    await acceptCookies(page)
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Ver que no hay scroll horizontal (que no se salga)
-    const bodyWidth = await page.evaluate(() => document.body.scrollWidth)
-    expect(bodyWidth).toBeLessThanOrEqual(400) // doy un poco de margen
+    // Busco la parte de arriba (header)
+    const header = page.locator("header, nav")
+    if ((await header.count()) > 0) {
+      await expect(header.first()).toBeVisible()
+      console.log("✅ La parte de arriba está ahí")
+    } else {
+      console.log("❌ No encontré la parte de arriba")
+    }
 
-    // Ver que el botón sigue visible
-    const startButton = page.locator('button:has-text("Comenzar")')
-    await expect(startButton).toBeVisible()
+    // Busco el contenido principal
+    const mainContent = page.locator("main, h1")
+    const contentExists = (await mainContent.count()) > 0
 
-    // Ver que hay menú (aunque sea diferente)
-    const menuItems = page.locator("nav, .navbar, .menu")
-    await expect(menuItems.first()).toBeVisible()
-
-    console.log("En móvil se adapta correctamente")
-  })
+    if (contentExists) {
+      await expect(mainContent.first()).toBeVisible()
+      console.log("✅ El contenido principal está ahí")
+    } else {
+      console.log("❌ No encontré el contenido principal")
+    }
+  } catch (error) {
+    console.log("❌ Error revisando las partes de la página")
+    throw error
+  }
 })

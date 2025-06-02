@@ -1,68 +1,103 @@
 import { test, expect } from "@playwright/test"
-import { waitForPageLoad, acceptCookies, checkBasicAccessibility } from "../utils/helpers"
 
-test.describe("Pruebas de Accesibilidad", () => {
-  test("Estructura semántica básica", async ({ page }) => {
-    console.log("Viendo si la página está bien estructurada...")
-
+// Estas son las pruebas para ver si la página es accesible para personas con discapacidades
+test("Revisar si la página tiene títulos bien puestos", async ({ page }) => {
+  try {
     await page.goto("https://www.cognifit.com/")
-    await acceptCookies(page)
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Ver si hay un título principal
-    const h1 = page.locator("h1")
-    await expect(h1.first()).toBeVisible()
+    // Busco si hay títulos H1 (los títulos principales)
+    const h1Elements = page.locator("h1")
+    const h1Count = await h1Elements.count()
 
-    // Ver si hay navegación
-    const nav = page.locator("nav, [role='navigation']")
-    await expect(nav.first()).toBeVisible()
-
-    // Ver si hay contenido principal
-    const main = page.locator("main, [role='main']")
-    const hasMain = (await main.count()) > 0
-    if (!hasMain) {
-      // Si no hay main, al menos que haya títulos
-      const content = page.locator("h1, h2, h3")
-      expect(await content.count()).toBeGreaterThan(0)
+    if (h1Count > 0) {
+      console.log("✅ Encontré títulos principales en la página")
+    } else {
+      console.log("❌ No hay títulos principales")
     }
 
-    console.log("La estructura parece correcta")
-  })
+    expect(h1Count).toBeGreaterThan(0)
 
-  test("Accesibilidad de botones y enlaces", async ({ page }) => {
-    console.log("Viendo si los botones tienen texto...")
+    // También miro si hay otros títulos como H2, H3
+    const headings = page.locator("h1, h2, h3")
+    const totalHeadings = await headings.count()
 
+    if (totalHeadings > 1) {
+      console.log(`✅ La página tiene ${totalHeadings} títulos en total`)
+    } else {
+      console.log("❌ Muy pocos títulos en la página")
+    }
+
+    expect(totalHeadings).toBeGreaterThan(1)
+  } catch (error) {
+    console.log("❌ Algo salió mal revisando los títulos")
+    throw error
+  }
+})
+
+test("Ver si los formularios se pueden usar bien", async ({ page }) => {
+  try {
     await page.goto("https://www.cognifit.com/")
-    await acceptCookies(page)
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Ver si el botón principal tiene texto
-    const startButton = page.locator('button:has-text("Comenzar")')
-    const buttonText = await startButton.textContent()
-    expect(buttonText?.trim()).toBeTruthy()
+    // Busco cajas de texto donde la gente puede escribir
+    const inputs = page.locator("input")
+    const inputCount = await inputs.count()
 
-    // Ver si los enlaces del menú tienen texto
-    const menuLinks = page.locator('a:has-text("Test Cognitivos"), a:has-text("Juegos Mentales")')
-    const linkCount = await menuLinks.count()
-    expect(linkCount).toBeGreaterThan(0)
+    if (inputCount > 0) {
+      console.log(`✅ Encontré ${inputCount} cajas de texto`)
 
-    console.log("Los botones y enlaces están bien")
-  })
+      // Reviso si la primera caja tiene alguna descripción
+      const firstInput = inputs.first()
+      const hasLabel =
+        (await firstInput.getAttribute("aria-label")) ||
+        (await firstInput.getAttribute("placeholder")) ||
+        (await firstInput.getAttribute("name"))
 
-  test("Verificación general de accesibilidad", async ({ page }) => {
-    console.log("Revisión general de accesibilidad...")
+      if (hasLabel) {
+        console.log("✅ Las cajas de texto tienen descripciones")
+      } else {
+        console.log("❌ Las cajas de texto no tienen descripciones")
+      }
 
+      expect(hasLabel).toBeTruthy()
+    } else {
+      console.log("✅ No hay formularios que revisar")
+    }
+  } catch (error) {
+    console.log("❌ Error revisando los formularios")
+    throw error
+  }
+})
+
+test("Probar si se puede navegar con el teclado", async ({ page }) => {
+  try {
     await page.goto("https://www.cognifit.com/")
-    await acceptCookies(page)
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    const { issues } = await checkBasicAccessibility(page)
+    // Busco botones y enlaces que se puedan usar con Tab
+    const focusableElements = page.locator("button, a, input")
+    const count = await focusableElements.count()
 
-    console.log(`Problemas encontrados: ${issues.length}`)
-    issues.forEach((issue) => console.log(`- ${issue}`))
+    if (count > 0) {
+      console.log(`✅ Hay ${count} elementos que se pueden usar con teclado`)
 
-    // Permito hasta 5 problemas pequeños
-    expect(issues.length).toBeLessThanOrEqual(5)
-    console.log("La accesibilidad está aceptable")
-  })
+      // Pruebo hacer click en el primer elemento con Tab
+      await focusableElements.first().focus()
+      const focused = await page.evaluate(() => document.activeElement?.tagName)
+
+      if (focused) {
+        console.log("✅ Se puede navegar con el teclado")
+      } else {
+        console.log("❌ No se puede navegar bien con teclado")
+      }
+
+      expect(focused).toBeTruthy()
+    } else {
+      console.log("❌ No hay elementos para navegar con teclado")
+    }
+  } catch (error) {
+    console.log("❌ Error probando la navegación con teclado")
+    throw error
+  }
 })

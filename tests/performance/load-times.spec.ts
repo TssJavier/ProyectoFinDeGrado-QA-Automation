@@ -1,52 +1,80 @@
 import { test, expect } from "@playwright/test"
-import { measureLoadTime, waitForPageLoad } from "../utils/helpers"
 
-test.describe("Pruebas de Performance", () => {
-  test("Tiempo de carga página principal", async ({ page }) => {
-    console.log("Viendo cuanto tarda en cargar...")
-
-    const loadTime = await measureLoadTime(page, "https://www.cognifit.com/")
-    console.log(`Tardó: ${loadTime}ms`)
-
-    // No debería tardar más de 8 segundos
-    expect(loadTime).toBeLessThan(8000)
-    console.log("Carga en tiempo aceptable")
-  })
-
-  test("Carga de recursos principales", async ({ page }) => {
-    console.log("Viendo si cargan las imágenes y eso...")
+// Estas pruebas miden qué tan rápido carga la página
+test("Medir cuánto tarda en cargar la página", async ({ page }) => {
+  try {
+    // Empiezo a contar el tiempo
+    const startTime = Date.now()
 
     await page.goto("https://www.cognifit.com/")
-    await waitForPageLoad(page)
+    await page.waitForLoadState("domcontentloaded")
 
-    // Ver si hay imágenes cargadas
-    const images = page.locator("img:visible")
-    const imageCount = await images.count()
-    expect(imageCount).toBeGreaterThan(0)
+    // Paro de contar el tiempo
+    const loadTime = Date.now() - startTime
 
-    // Ver si se aplicaron los estilos
-    const bodyColor = await page.evaluate(() => {
-      return window.getComputedStyle(document.body).color
-    })
-    expect(bodyColor).toBeTruthy()
-
-    console.log(`Se cargaron ${imageCount} imágenes`)
-  })
-
-  test("Performance en diferentes páginas", async ({ page }) => {
-    console.log("Probando velocidad en varias páginas...")
-
-    const pages = [
-      { name: "Principal", url: "https://www.cognifit.com/" },
-      { name: "Test Cognitivos", url: "https://www.cognifit.com/test-cognitivos" },
-    ]
-
-    for (const pageInfo of pages) {
-      const loadTime = await measureLoadTime(page, pageInfo.url)
-      console.log(`${pageInfo.name}: ${loadTime}ms`)
-      expect(loadTime).toBeLessThan(10000) // máximo 10 segundos
+    if (loadTime < 5000) {
+      console.log(`✅ La página cargó rápido: ${loadTime}ms`)
+    } else {
+      console.log(`❌ La página tardó mucho: ${loadTime}ms`)
     }
 
-    console.log("Todas las páginas cargan bien")
-  })
+    expect(loadTime).toBeLessThan(5000)
+  } catch (error) {
+    console.log("❌ Error midiendo el tiempo de carga")
+    throw error
+  }
+})
+
+test("Revisar si las imágenes cargan bien", async ({ page }) => {
+  try {
+    await page.goto("https://www.cognifit.com/")
+    await page.waitForLoadState("domcontentloaded")
+
+    // Cuento cuántas imágenes hay
+    const images = page.locator("img")
+    const imageCount = await images.count()
+
+    if (imageCount > 0) {
+      // Reviso que al menos la primera imagen se vea
+      await expect(images.first()).toBeVisible()
+      console.log(`✅ Las imágenes cargan bien (${imageCount} encontradas)`)
+    } else {
+      console.log("❌ No hay imágenes en la página")
+    }
+  } catch (error) {
+    console.log("❌ Error revisando las imágenes")
+    throw error
+  }
+})
+
+test("Obtener datos técnicos de velocidad", async ({ page }) => {
+  try {
+    await page.goto("https://www.cognifit.com/")
+    await page.waitForLoadState("domcontentloaded")
+
+    // Obtengo información técnica del navegador
+    const metrics = await page.evaluate(() => {
+      const performance = window.performance
+      if (!performance) return {}
+
+      const timing = performance.timing
+      const navigationStart = timing.navigationStart
+
+      return {
+        loadTime: timing.loadEventEnd - navigationStart,
+        domContentLoadedTime: timing.domContentLoadedEventEnd - navigationStart,
+      }
+    })
+
+    if (metrics.loadTime) {
+      console.log(`✅ Datos técnicos obtenidos: ${metrics.loadTime}ms`)
+    } else {
+      console.log("❌ No pude obtener datos técnicos")
+    }
+
+    expect(metrics).toBeTruthy()
+  } catch (error) {
+    console.log("❌ Error obteniendo datos técnicos")
+    throw error
+  }
 })

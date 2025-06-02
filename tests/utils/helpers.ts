@@ -1,66 +1,100 @@
 import type { Page } from "@playwright/test"
 
-// Función para esperar a que cargue todo
+/**
+ * Espera a que la página cargue completamente
+ */
 export async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForLoadState("domcontentloaded")
-  await page.waitForTimeout(1000) // espero un poco más por si acaso
-}
-
-// Para aceptar las cookies que salen siempre
-export async function acceptCookies(page: Page): Promise<void> {
-  const cookieButton = page.locator('button:has-text("Permitir todas")')
-  if ((await cookieButton.count()) > 0) {
-    await cookieButton.click()
-    await page.waitForTimeout(1000)
+  try {
+    await page.waitForLoadState("networkidle", { timeout: 15000 })
+  } catch (e) {
+    await page.waitForLoadState("domcontentloaded")
+    await page.waitForTimeout(2000)
   }
 }
 
-// Medir cuanto tarda en cargar
+/**
+ * Acepta cookies si aparece el banner
+ */
+export async function acceptCookies(page: Page): Promise<void> {
+  try {
+    const cookieButton = page.locator('button:has-text("Permitir todas"), button:has-text("Aceptar")')
+    if ((await cookieButton.count()) > 0) {
+      await cookieButton.first().click()
+      await page.waitForTimeout(1000)
+    }
+  } catch (e) {
+    console.log("No se encontró banner de cookies")
+  }
+}
+
+/**
+ * Mide el tiempo de carga de una página
+ */
 export async function measureLoadTime(page: Page, url: string): Promise<number> {
   const startTime = Date.now()
-  await page.goto(url)
-  await waitForPageLoad(page)
+  try {
+    await page.goto(url, { timeout: 20000 })
+    await waitForPageLoad(page)
+  } catch (e) {
+    console.log(`Error al cargar ${url}`)
+  }
   return Date.now() - startTime
 }
 
-// Revisar cosas básicas de accesibilidad
+/**
+ * Verifica aspectos básicos de accesibilidad
+ */
 export async function checkBasicAccessibility(page: Page): Promise<{ issues: string[] }> {
   const issues: string[] = []
 
-  // Ver si hay títulos
-  const headings = await page.locator("h1, h2, h3").count()
-  if (headings === 0) {
-    issues.push("No hay títulos")
-  }
+  try {
+    // Verificar títulos
+    const headings = await page.locator("h1, h2, h3").count()
+    if (headings === 0) {
+      issues.push("No se encontraron títulos")
+    }
 
-  // Ver imágenes sin texto alternativo
-  const imagesWithoutAlt = await page.locator("img:not([alt])").count()
-  if (imagesWithoutAlt > 5) {
-    issues.push(`Hay ${imagesWithoutAlt} imágenes sin alt`)
+    // Verificar imágenes sin alt
+    const imagesWithoutAlt = await page.locator("img:not([alt])").count()
+    if (imagesWithoutAlt > 5) {
+      issues.push(`${imagesWithoutAlt} imágenes sin texto alternativo`)
+    }
+
+    // Verificar enlaces sin texto
+    const emptyLinks = await page.locator("a:not(:has-text())").count()
+    if (emptyLinks > 0) {
+      issues.push(`${emptyLinks} enlaces sin texto`)
+    }
+  } catch (e) {
+    issues.push("Error al verificar accesibilidad")
   }
 
   return { issues }
 }
 
-// No estoy seguro si esto funciona bien pero lo intento
+/**
+ * Captura métricas de rendimiento
+ */
 export async function capturePerformanceMetrics(page: Page): Promise<any> {
-  const metrics = await page.evaluate(() => {
-    // @ts-ignore
-    const performance = window.performance || window.msPerformance || window.webkitPerformance
-    if (!performance) {
-      return {}
-    }
+  try {
+    const metrics = await page.evaluate(() => {
+      const performance = window.performance
+      if (!performance) return {}
 
-    const timing = performance.timing
-    const navigationStart = timing.navigationStart
+      const timing = performance.timing
+      const navigationStart = timing.navigationStart
 
-    return {
-      loadTime: timing.loadEventEnd - navigationStart,
-      ttfb: timing.responseStart - navigationStart,
-      domContentLoadedTime: timing.domContentLoadedEventEnd - navigationStart,
-      transferSize: (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.transferSize,
-    }
-  })
+      return {
+        loadTime: timing.loadEventEnd - navigationStart,
+        domContentLoadedTime: timing.domContentLoadedEventEnd - navigationStart,
+        ttfb: timing.responseStart - navigationStart,
+        transferSize: (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.transferSize || 0,
+      }
+    })
 
-  return metrics
+    return metrics
+  } catch (e) {
+    console.log("Error capturando métricas de rendimiento")
+    return {}
+  }
 }
