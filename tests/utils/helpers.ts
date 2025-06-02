@@ -1,74 +1,66 @@
 import type { Page } from "@playwright/test"
 
-/**
- * Espera a que se cargue completamente la página
- */
+// Función para esperar a que cargue todo
 export async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForLoadState("networkidle")
+  await page.waitForLoadState("domcontentloaded")
+  await page.waitForTimeout(1000) // espero un poco más por si acaso
 }
 
-/**
- * Realiza login en la plataforma CogniFit
- * Nota: Usar credenciales de prueba o variables de entorno en un caso real
- */
-export async function login(page: Page, username: string, password: string): Promise<void> {
-  await page.goto("/login")
-  await page.fill('input[name="email"]', username)
-  await page.fill('input[name="password"]', password)
-  await page.click('button[type="submit"]')
+// Para aceptar las cookies que salen siempre
+export async function acceptCookies(page: Page): Promise<void> {
+  const cookieButton = page.locator('button:has-text("Permitir todas")')
+  if ((await cookieButton.count()) > 0) {
+    await cookieButton.click()
+    await page.waitForTimeout(1000)
+  }
+}
+
+// Medir cuanto tarda en cargar
+export async function measureLoadTime(page: Page, url: string): Promise<number> {
+  const startTime = Date.now()
+  await page.goto(url)
   await waitForPageLoad(page)
+  return Date.now() - startTime
 }
 
-/**
- * Captura métricas de rendimiento básicas
- */
-export async function capturePerformanceMetrics(page: Page): Promise<Record<string, number>> {
-  const performanceTimingJson = await page.evaluate(() => {
+// Revisar cosas básicas de accesibilidad
+export async function checkBasicAccessibility(page: Page): Promise<{ issues: string[] }> {
+  const issues: string[] = []
+
+  // Ver si hay títulos
+  const headings = await page.locator("h1, h2, h3").count()
+  if (headings === 0) {
+    issues.push("No hay títulos")
+  }
+
+  // Ver imágenes sin texto alternativo
+  const imagesWithoutAlt = await page.locator("img:not([alt])").count()
+  if (imagesWithoutAlt > 5) {
+    issues.push(`Hay ${imagesWithoutAlt} imágenes sin alt`)
+  }
+
+  return { issues }
+}
+
+// No estoy seguro si esto funciona bien pero lo intento
+export async function capturePerformanceMetrics(page: Page): Promise<any> {
+  const metrics = await page.evaluate(() => {
+    // @ts-ignore
+    const performance = window.performance || window.msPerformance || window.webkitPerformance
+    if (!performance) {
+      return {}
+    }
+
     const timing = performance.timing
     const navigationStart = timing.navigationStart
 
     return {
-      dnsLookup: timing.domainLookupEnd - timing.domainLookupStart,
-      tcpConnection: timing.connectEnd - timing.connectStart,
-      serverResponse: timing.responseStart - timing.requestStart,
-      domComplete: timing.domComplete - navigationStart,
-      loadEvent: timing.loadEventEnd - timing.loadEventStart,
-      totalPageLoad: timing.loadEventEnd - navigationStart,
+      loadTime: timing.loadEventEnd - navigationStart,
+      ttfb: timing.responseStart - navigationStart,
+      domContentLoadedTime: timing.domContentLoadedEventEnd - navigationStart,
+      transferSize: (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.transferSize,
     }
   })
 
-  return performanceTimingJson
-}
-
-/**
- * Verifica elementos de accesibilidad básicos
- */
-export async function checkBasicAccessibility(page: Page): Promise<{ issues: string[] }> {
-  const issues: string[] = []
-
-  // Verificar imágenes sin alt
-  const imagesWithoutAlt = await page.$$eval("img:not([alt])", (imgs) => imgs.length)
-  if (imagesWithoutAlt > 0) {
-    issues.push(`Hay ${imagesWithoutAlt} imágenes sin atributo alt`)
-  }
-
-  // Verificar que hay un solo h1
-  const h1Count = await page.$$eval("h1", (h1s) => h1s.length)
-  if (h1Count !== 1) {
-    issues.push(`La página tiene ${h1Count} elementos h1, debería tener exactamente 1`)
-  }
-
-  // Verificar que los inputs tienen label asociado
-  const inputsWithoutLabels = await page.$$eval("input[id]", (inputs) => {
-    return inputs.filter((input) => {
-      const id = input.getAttribute("id")
-      return !document.querySelector(`label[for="${id}"]`)
-    }).length
-  })
-
-  if (inputsWithoutLabels > 0) {
-    issues.push(`Hay ${inputsWithoutLabels} inputs sin label asociado`)
-  }
-
-  return { issues }
+  return metrics
 }

@@ -1,75 +1,57 @@
 import { test, expect } from "@playwright/test"
-import { waitForPageLoad } from "../utils/helpers"
+import { waitForPageLoad, acceptCookies } from "../utils/helpers"
 
-test.describe("Pruebas de navegación", () => {
-  test("Los enlaces del menú principal deben funcionar correctamente", async ({ page }) => {
-    await page.goto("/")
+test.describe("Pruebas Funcionales - Navegación", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page) // acepto cookies antes de hacer nada
     await waitForPageLoad(page)
-
-    // Obtener todos los enlaces del menú principal
-    const menuLinks = page.locator('nav.navbar a[href]:not([href="#"]):not([href=""])')
-    const count = await menuLinks.count()
-
-    // Verificar que hay enlaces en el menú
-    expect(count).toBeGreaterThan(0)
-
-    // Probar los primeros 3 enlaces (para no hacer la prueba muy larga)
-    for (let i = 0; i < Math.min(3, count); i++) {
-      const link = menuLinks.nth(i)
-      const href = await link.getAttribute("href")
-      const linkText = await link.textContent()
-
-      console.log(`Probando enlace: ${linkText} (${href})`)
-
-      // Clic en el enlace
-      await link.click()
-      await waitForPageLoad(page)
-
-      // Verificar que la navegación funcionó
-      if (href?.startsWith("/")) {
-        // Enlaces internos
-        expect(page.url()).toContain(href)
-      } else if (href?.startsWith("http")) {
-        // Enlaces externos
-        expect(page.url()).toContain(new URL(href).hostname)
-      }
-
-      // Volver a la página principal para el siguiente enlace
-      await page.goto("/")
-      await waitForPageLoad(page)
-    }
   })
 
-  test("El buscador debe mostrar resultados relevantes", async ({ page }) => {
-    await page.goto("/")
+  test("Navegación por menú principal", async ({ page }) => {
+    console.log("Probando si funcionan los enlaces del menú...")
+
+    // Probar el botón de Test Cognitivos
+    const testButton = page.locator('a:has-text("Test Cognitivos")')
+    await testButton.click()
+    await waitForPageLoad(page)
+    expect(page.url()).toContain("test") // debería ir a una página con "test" en la URL
+    console.log("Test Cognitivos funciona")
+
+    // Volver atrás y probar Juegos
+    await page.goBack()
     await waitForPageLoad(page)
 
-    // Buscar el campo de búsqueda (ajustar selector según la estructura real)
-    const searchInput = page.locator('input[type="search"], .search-input')
+    const gamesButton = page.locator('a:has-text("Juegos Mentales")')
+    await gamesButton.click()
+    await waitForPageLoad(page)
+    expect(page.url()).toContain("juegos") // debería ir a juegos
+    console.log("Juegos Mentales también funciona")
+  })
 
-    // Si no hay buscador visible, puede estar en un menú desplegable
-    if ((await searchInput.count()) === 0) {
-      // Intentar abrir el buscador (ajustar según la web real)
-      const searchIcon = page.locator(".search-icon, button:has(.fa-search)")
-      if ((await searchIcon.count()) > 0) {
-        await searchIcon.click()
-        await page.waitForTimeout(500) // Esperar animación
-      }
-    }
+  test("Botón principal Comenzar", async ({ page }) => {
+    console.log("Probando el botón azul grande...")
 
-    // Si encontramos el buscador, probarlo
-    if ((await page.locator('input[type="search"], .search-input').count()) > 0) {
-      const searchInput = page.locator('input[type="search"], .search-input')
-      await searchInput.fill("memoria")
-      await searchInput.press("Enter")
-      await waitForPageLoad(page)
+    const startButton = page.locator('button:has-text("Comenzar"), a:has-text("Comenzar")')
+    await expect(startButton).toBeVisible()
+    await startButton.click()
+    await waitForPageLoad(page)
 
-      // Verificar que hay resultados
-      const results = page.locator(".search-results, .results-container, article, .card")
-      await expect(results.first()).toBeVisible()
-    } else {
-      console.log("No se encontró un buscador para probar")
-      test.skip()
-    }
+    // Verificar que me llevó a otro sitio
+    expect(page.url()).not.toBe("https://www.cognifit.com/")
+    console.log("El botón Comenzar me llevó a otra página")
+  })
+
+  test("Botón Iniciar Sesión", async ({ page }) => {
+    console.log("Probando el login...")
+
+    const loginButton = page.locator('button:has-text("INICIAR SESIÓN"), a:has-text("INICIAR SESIÓN")')
+    await expect(loginButton).toBeVisible()
+    await loginButton.click()
+    await waitForPageLoad(page)
+
+    // Debería ir al login
+    expect(page.url()).toContain("login")
+    console.log("Me llevó al login correctamente")
   })
 })

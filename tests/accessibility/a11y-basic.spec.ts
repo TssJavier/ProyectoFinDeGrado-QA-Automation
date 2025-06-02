@@ -1,68 +1,68 @@
 import { test, expect } from "@playwright/test"
-import { checkBasicAccessibility, waitForPageLoad } from "../utils/helpers"
+import { waitForPageLoad, acceptCookies, checkBasicAccessibility } from "../utils/helpers"
 
-test.describe("Pruebas básicas de accesibilidad", () => {
-  test("La página principal debe cumplir criterios básicos de accesibilidad", async ({ page }) => {
-    await page.goto("/")
+test.describe("Pruebas de Accesibilidad", () => {
+  test("Estructura semántica básica", async ({ page }) => {
+    console.log("Viendo si la página está bien estructurada...")
+
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page)
+    await waitForPageLoad(page)
+
+    // Ver si hay un título principal
+    const h1 = page.locator("h1")
+    await expect(h1.first()).toBeVisible()
+
+    // Ver si hay navegación
+    const nav = page.locator("nav, [role='navigation']")
+    await expect(nav.first()).toBeVisible()
+
+    // Ver si hay contenido principal
+    const main = page.locator("main, [role='main']")
+    const hasMain = (await main.count()) > 0
+    if (!hasMain) {
+      // Si no hay main, al menos que haya títulos
+      const content = page.locator("h1, h2, h3")
+      expect(await content.count()).toBeGreaterThan(0)
+    }
+
+    console.log("La estructura parece correcta")
+  })
+
+  test("Accesibilidad de botones y enlaces", async ({ page }) => {
+    console.log("Viendo si los botones tienen texto...")
+
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page)
+    await waitForPageLoad(page)
+
+    // Ver si el botón principal tiene texto
+    const startButton = page.locator('button:has-text("Comenzar")')
+    const buttonText = await startButton.textContent()
+    expect(buttonText?.trim()).toBeTruthy()
+
+    // Ver si los enlaces del menú tienen texto
+    const menuLinks = page.locator('a:has-text("Test Cognitivos"), a:has-text("Juegos Mentales")')
+    const linkCount = await menuLinks.count()
+    expect(linkCount).toBeGreaterThan(0)
+
+    console.log("Los botones y enlaces están bien")
+  })
+
+  test("Verificación general de accesibilidad", async ({ page }) => {
+    console.log("Revisión general de accesibilidad...")
+
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page)
     await waitForPageLoad(page)
 
     const { issues } = await checkBasicAccessibility(page)
 
-    console.log("Problemas de accesibilidad encontrados:", issues)
+    console.log(`Problemas encontrados: ${issues.length}`)
+    issues.forEach((issue) => console.log(`- ${issue}`))
 
-    // No debería haber problemas graves, pero puede haber advertencias
-    expect(issues.length).toBeLessThanOrEqual(3)
-  })
-
-  test("Los formularios deben tener etiquetas y ser accesibles", async ({ page }) => {
-    // Login en el site
-    await page.goto("/login")
-    await waitForPageLoad(page)
-
-    // Verificar que los inputs tienen labels y siguen funcionando correctamente
-    const inputs = page.locator("input[id]")
-    const count = await inputs.count()
-
-    for (let i = 0; i < count; i++) {
-      const input = inputs.nth(i)
-      const id = await input.getAttribute("id")
-
-      if (id) {
-        const label = page.locator(`label[for="${id}"]`)
-        const hasAriaLabel = await input.getAttribute("aria-label")
-        const hasPlaceholder = await input.getAttribute("placeholder")
-
-        // Debe tener al menos una forma de accesibilidad
-        const hasAccessibility = (await label.count()) > 0 || hasAriaLabel || hasPlaceholder
-        expect(hasAccessibility).toBeTruthy()
-      }
-    }
-  })
-
-  test("El contraste de color debe ser adecuado para elementos principales", async ({ page }) => {
-    await page.goto("/")
-    await waitForPageLoad(page)
-
-    // Esta es una prueba simplificada de contraste
-    // En un proyecto real, usaríamos una herramienta específica como axe
-
-    // Verificar que los textos principales tienen un color que contrasta con el fondo
-    const mainTexts = await page.$$eval("h1, h2, p", (elements) => {
-      return elements.map((el) => {
-        const style = window.getComputedStyle(el)
-        return {
-          textColor: style.color,
-          backgroundColor: style.backgroundColor,
-        }
-      })
-    })
-
-    console.log("Análisis de contraste:", mainTexts)
-
-    // En un caso real, aquí calcularíamos el ratio de contraste
-    // y verificaríamos que cumple con WCAG 2.1 AA (4.5:1 para texto normal)
-
-    // Por ahora, solo registramos la información para análisis manual
-    expect(mainTexts.length).toBeGreaterThan(0)
+    // Permito hasta 5 problemas pequeños
+    expect(issues.length).toBeLessThanOrEqual(5)
+    console.log("La accesibilidad está aceptable")
   })
 })

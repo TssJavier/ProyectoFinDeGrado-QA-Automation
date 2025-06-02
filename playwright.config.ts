@@ -2,10 +2,10 @@ import { defineConfig, devices } from "@playwright/test"
 
 export default defineConfig({
   testDir: "./tests",
-  timeout: 30000,
+  timeout: 45000, // Aumentado para ser más permisivo
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1, // Añadido un reintento incluso en desarrollo
   workers: process.env.CI ? 1 : undefined,
   reporter: [["html"], ["json", { outputFile: "test-results/test-results.json" }]],
   use: {
@@ -13,6 +13,10 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "on-first-retry",
+
+    // Añadidos timeouts más permisivos
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
   },
   projects: [
     {

@@ -1,54 +1,67 @@
 import { test, expect } from "@playwright/test"
-import { waitForPageLoad } from "../utils/helpers"
+import { waitForPageLoad, acceptCookies } from "../utils/helpers"
 
-test.describe("Pruebas de layout de la página principal", () => {
-  test("El header debe mantener su estructura en desktop", async ({ page }) => {
-    await page.goto("/")
+test.describe("Pruebas de Layout - Responsive", () => {
+  test("Layout en Desktop", async ({ page }) => {
+    console.log("Probando como se ve en ordenador...")
+
+    await page.setViewportSize({ width: 1280, height: 720 }) // tamaño de ordenador
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page)
     await waitForPageLoad(page)
 
-    // Verificar logo
-    const logo = page.locator(".navbar-brand img")
-    await expect(logo).toBeVisible()
+    // Ver si están los elementos principales
+    const logo = page.locator('img[alt*="CogniFit"], .logo')
+    await expect(logo.first()).toBeVisible()
 
-    // Verificar menú de navegación
-    const navMenu = page.locator("nav.navbar")
-    await expect(navMenu).toBeVisible()
+    const mainTitle = page.locator('h1, *:has-text("perdiendo facultades")')
+    await expect(mainTitle.first()).toBeVisible()
 
-    // Verificar botones de acción principales
-    const ctaButtons = page.locator("a.btn-primary, button.btn-primary")
-    expect(await ctaButtons.count()).toBeGreaterThan(0)
+    const startButton = page.locator('button:has-text("Comenzar")')
+    await expect(startButton).toBeVisible()
+
+    console.log("En desktop se ve bien")
   })
 
-  test("El footer debe contener enlaces importantes y copyright", async ({ page }) => {
-    await page.goto("/")
+  test("Layout en Tablet", async ({ page }) => {
+    console.log("Probando como se ve en tablet...")
+
+    await page.setViewportSize({ width: 768, height: 1024 }) // tamaño tablet
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page)
     await waitForPageLoad(page)
 
-    // Verificar que el footer existe
-    const footer = page.locator("footer")
-    await expect(footer).toBeVisible()
+    // Ver que no se sale por los lados
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth)
+    expect(bodyWidth).toBeLessThanOrEqual(768)
 
-    // Verificar enlaces de redes sociales
-    const socialLinks = footer.locator('a[href*="facebook"], a[href*="twitter"], a[href*="linkedin"]')
-    expect(await socialLinks.count()).toBeGreaterThan(0)
+    // Ver que el título sigue ahí
+    const mainTitle = page.locator('h1, *:has-text("perdiendo facultades")')
+    await expect(mainTitle.first()).toBeVisible()
 
-    // Verificar texto de copyright
-    const copyright = footer.locator('*:has-text("Copyright")')
-    await expect(copyright).toBeVisible()
+    console.log("En tablet también se ve bien")
   })
 
-  test("La página debe ser responsive en dispositivos móviles", async ({ page }) => {
-    // Configurar viewport para móvil
-    await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto("/")
+  test("Layout en Móvil", async ({ page }) => {
+    console.log("Probando como se ve en móvil...")
+
+    await page.setViewportSize({ width: 375, height: 667 }) // tamaño móvil
+    await page.goto("https://www.cognifit.com/")
+    await acceptCookies(page)
     await waitForPageLoad(page)
 
-    // Verificar que el menú hamburguesa está visible en móvil
-    const mobileMenu = page.locator(".navbar-toggler, button.hamburger")
-    await expect(mobileMenu).toBeVisible()
+    // Ver que no hay scroll horizontal (que no se salga)
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth)
+    expect(bodyWidth).toBeLessThanOrEqual(400) // doy un poco de margen
 
-    // Verificar que el contenido principal se ajusta al ancho de la pantalla
-    const mainContent = page.locator("main, .main-content")
-    const boundingBox = await mainContent.boundingBox()
-    expect(boundingBox?.width).toBeLessThanOrEqual(375)
+    // Ver que el botón sigue visible
+    const startButton = page.locator('button:has-text("Comenzar")')
+    await expect(startButton).toBeVisible()
+
+    // Ver que hay menú (aunque sea diferente)
+    const menuItems = page.locator("nav, .navbar, .menu")
+    await expect(menuItems.first()).toBeVisible()
+
+    console.log("En móvil se adapta correctamente")
   })
 })
